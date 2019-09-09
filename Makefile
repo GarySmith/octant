@@ -16,7 +16,7 @@ VERSION ?= v0.6.0
 ifdef XDG_CONFIG_HOME
 	OCTANT_PLUGINSTUB_DIR ?= ${XDG_CONFIG_HOME}/octant/plugins
 # Determine in on windows
-else ifeq ($(OS),Windows_NT) 
+else ifeq ($(OS),Windows_NT)
 	OCTANT_PLUGINSTUB_DIR ?= ${LOCALAPPDATA}/octant/plugins
 else
 	OCTANT_PLUGINSTUB_DIR ?= ${HOME}/.config/octant/plugins
@@ -114,10 +114,11 @@ ci-quick:
 	@go generate ./web
 	make octant-dev
 
-install-test-plugin:
+install-plugins:
 	@echo $(OCTANT_PLUGINSTUB_DIR)
 	mkdir -p $(OCTANT_PLUGINSTUB_DIR)
 	go build -o $(OCTANT_PLUGINSTUB_DIR)/octant-sample-plugin github.com/vmware/octant/cmd/octant-sample-plugin
+	go build -o $(OCTANT_PLUGINSTUB_DIR)/endpoint-plugin github.com/vmware/octant/cmd/endpoint-plugin
 
 .PHONY:
 build-deps:
