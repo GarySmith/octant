@@ -77,16 +77,16 @@ type endpoint struct {
 	Enabled     bool
 	Interface   string
 	ServiceName string `json:"Service Name"`
-	ID          string
 }
 
 type server struct {
 	Status      string
 	Name        string
-	Image       string
-	ID          string
-	Flavor      string
+	ImageName   string `json:"Image Name"`
+	Flavor      string `json:"Flavor Name"`
 	Networks    string
+	PowerState  string `json:"Power State"`
+    AvailZone   string `json:"Availability Zone"`
 }
 
 
@@ -136,7 +136,7 @@ func endpointList(request *service.Request) (component.ContentResponse, error) {
 func serverList(request *service.Request) (component.ContentResponse, error) {
 
     // Requires that you have appropriate OS_* variables defined in the environment so that 'openstack servers list' succeeds
-    out, err := exec.Command("openstack", "server", "list", "-f", "json").Output()
+    out, err := exec.Command("openstack", "server", "list", "--long", "-f", "json").Output()
     if err != nil {
         log.Fatal(err)
     }
@@ -153,16 +153,17 @@ func serverList(request *service.Request) (component.ContentResponse, error) {
         return res[i].Name < res[j].Name
     })
 
-    cols := component.NewTableCols("Name", "ID", "Status", "Image", "Flavor", "Networks")
+    cols := component.NewTableCols("Name", "Status", "Image Name", "Flavor", "Networks", "Power State", "Availability Zone")
     table := component.NewTable("Servers", "placeholder", cols)
     for _, elem := range res {
         row := component.TableRow{}
         row["Name"] = component.NewText(elem.Name)
-        row["ID"] = component.NewText(elem.ID)
         row["Status"] = component.NewText(elem.Status)
-        row["Image"] = component.NewText(elem.Image)
+        row["Image Name"] = component.NewText(elem.ImageName)
         row["Flavor"] = component.NewText(elem.Flavor)
         row["Networks"] = component.NewText(elem.Networks)
+        row["Power State"] = component.NewText(elem.PowerState)
+        row["Availability Zone"] = component.NewText(elem.AvailZone)
         table.Add(row)
     }
 
