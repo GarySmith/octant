@@ -7,6 +7,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os/exec"
 	"sort"
@@ -61,6 +62,11 @@ func handleNavigation(request *service.NavigationRequest) (navigation.Navigation
 				IconName: "folder",
 			},
 			{
+				Title:    "Images",
+				Path:     request.GeneratePath("images"),
+				IconName: "folder",
+			},
+			{
 				Title:    "Servers",
 				Path:     request.GeneratePath("servers"),
 				IconName: "folder",
@@ -77,6 +83,15 @@ type endpoint struct {
 	Enabled     bool
 	Interface   string
 	ServiceName string `json:"Service Name"`
+}
+
+type image struct {
+	Name        string
+	Status      string
+	Visibility  string
+	Protected   bool
+	DiskFormat  string `json:"Disk Format"`
+	Size        int32
 }
 
 type server struct {
@@ -133,10 +148,48 @@ func endpointList(request *service.Request) (component.ContentResponse, error) {
     return *contentResponse, nil
 }
 
+func imageList(request *service.Request) (component.ContentResponse, error) {
+
+    // Requires that you have appropriate OS_* variables defined in the environment so that 'openstack image list' succeeds
+    out, err := exec.Command("openstack", "image", "list", "--long", "-f", "json").Output()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Convert output into an array slice of image structs.
+    res := []image{}
+    if err := json.Unmarshal(out, &res); err != nil {
+        empty := component.ContentResponse{}
+        return empty, err
+    }
+
+    // Sort the table by name
+    sort.Slice(res, func(i, j int) bool {
+        return res[i].Name < res[j].Name
+    })
+
+    cols := component.NewTableCols("Name", "Status", "Visibility", "Protected", "DiskFormat", "Size")
+    table := component.NewTable("Images", "placeholder", cols)
+    for _, elem := range res {
+        row := component.TableRow{}
+        row["Name"] = component.NewText(elem.Name)
+        row["Status"] = component.NewText(elem.Status)
+        row["Visibility"] = component.NewText(elem.Visibility)
+        row["Protected"] = component.NewText(strconv.FormatBool(elem.Protected))
+        row["DiskFormat"] = component.NewText(elem.DiskFormat)
+        row["Size"] = component.NewText(fmt.Sprint(elem.Size))
+        table.Add(row)
+    }
+
+    contentResponse := component.NewContentResponse(component.TitleFromString("Images"))
+    contentResponse.Add(table)
+    return *contentResponse, nil
+}
+
 func serverList(request *service.Request) (component.ContentResponse, error) {
 
-    // Requires that you have appropriate OS_* variables defined in the environment so that 'openstack servers list' succeeds
-    out, err := exec.Command("openstack", "server", "list", "--long", "-f", "json").Output()
+    // Requires that you have appropriate OS_* variables defined in the environment so that 'openstack server list' succeeds
+    out, err := exec.Command("openstack", "server", "list", "--all", "--long", "-f", "json").Output()
     if err != nil {
         log.Fatal(err)
     }
@@ -148,7 +201,7 @@ func serverList(request *service.Request) (component.ContentResponse, error) {
         return empty, err
     }
 
-    // Sort the table by service type and interface
+    // Sort the table by name
     sort.Slice(res, func(i, j int) bool {
         return res[i].Name < res[j].Name
     })
@@ -177,5 +230,6 @@ func serverList(request *service.Request) (component.ContentResponse, error) {
 func initRoutes(router *service.Router) {
 
 	router.HandleFunc("/endpoints", endpointList)
+	router.HandleFunc("/images", imageList)
 	router.HandleFunc("/servers", serverList)
 }
